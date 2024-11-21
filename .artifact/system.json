@@ -203,7 +203,248 @@
           "import control as ct"
         ]
       }
+    },
+    {
+      "name": "quadcopter_rotor_conversion",
+      "description": "Converts angular rate commands to thrust and torque inputs using rotor dynamics.",
+      "parameters": [
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "kf",
+            "unit": "N*m^2",
+            "description": "Thrust coefficient"
+          },
+          "value": [
+            1e-6
+          ]
+        },
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "kd",
+            "unit": "N*m^2",
+            "description": "Drag coefficient"
+          },
+          "value": [
+            1e-8
+          ]
+        },
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "l",
+            "unit": "m",
+            "description": "Arm length"
+          },
+          "value": [
+            0.15
+          ]
+        },
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "w_max",
+            "unit": "rad/s",
+            "description": "Maximum angular velocity"
+          },
+          "value": [
+            500.0
+          ]
+        }
+      ],
+      "inputs": [
+        {
+          "dimension": [
+            1
+          ],
+          "name": "omega",
+          "unit": "rad/s",
+          "description": "Angular rate command"
+        }
+      ],
+      "outputs": [
+        {
+          "dimension": [
+            1
+          ],
+          "name": "thrust",
+          "unit": "N",
+          "description": "Thrust output"
+        },
+        {
+          "dimension": [
+            1
+          ],
+          "name": "torque",
+          "unit": "N*m",
+          "description": "Torque output"
+        }
+      ],
+      "states": null,
+      "equations": {
+        "linear_model": null,
+        "nonlinear_model": null,
+        "algebraic_model": {
+          "output_python": "import numpy as np\nimport control as ct\n\ndef outputs(t, x, u, params):\n    # Extract parameters\n    kf = params['kf']\n    kd = params['kd']\n    l = params['l']\n    w_max = params['w_max']\n    \n    # Extract input\n    omega = u[0]\n    \n    # Calculate omega squared\n    omega_squared = np.clip(omega, 0, w_max)**2\n    \n    # Calculate thrust and torque\n    thrust = kf * omega_squared\n    torque = kd * omega_squared * l\n    \n    return [thrust, torque]"
+        },
+        "packages": [
+          "import numpy as np",
+          "import control as ct"
+        ]
+      }
     }
   ],
-  "subsystems": []
+  "subsystems": [
+    {
+      "name": "quadcopter",
+      "description": "A complete quadcopter system combining rotor conversion and nonlinear dynamics.",
+      "components": [
+        {
+          "name": "quadcopter_rotor_conversion",
+          "connections": [
+            {
+              "destination_port_name": "omega",
+              "destination_port_indices": [],
+              "source_ports": [
+                {
+                  "component_name": "External",
+                  "port_name": "omega",
+                  "gain": 1.0,
+                  "indices": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "quadcopter_nonlinear",
+          "connections": [
+            {
+              "destination_port_name": "thrust",
+              "destination_port_indices": [],
+              "source_ports": [
+                {
+                  "component_name": "quadcopter_rotor_conversion",
+                  "port_name": "thrust",
+                  "gain": 1.0,
+                  "indices": []
+                }
+              ]
+            },
+            {
+              "destination_port_name": "torque_x",
+              "destination_port_indices": [],
+              "source_ports": [
+                {
+                  "component_name": "quadcopter_rotor_conversion",
+                  "port_name": "torque",
+                  "gain": 1.0,
+                  "indices": []
+                }
+              ]
+            },
+            {
+              "destination_port_name": "torque_y",
+              "destination_port_indices": [],
+              "source_ports": [
+                {
+                  "component_name": "quadcopter_rotor_conversion",
+                  "port_name": "torque",
+                  "gain": 1.0,
+                  "indices": []
+                }
+              ]
+            },
+            {
+              "destination_port_name": "torque_z",
+              "destination_port_indices": [],
+              "source_ports": [
+                {
+                  "component_name": "quadcopter_rotor_conversion",
+                  "port_name": "torque",
+                  "gain": 1.0,
+                  "indices": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "inputs": [
+        {
+          "dimension": [
+            1
+          ],
+          "name": "omega",
+          "unit": "rad/s",
+          "description": "Angular rate command for the rotors."
+        }
+      ],
+      "outputs": [
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "position_x",
+            "unit": "m",
+            "description": "Position along the x-axis."
+          },
+          "source_ports": [
+            {
+              "component_name": "quadcopter_nonlinear",
+              "port_name": "position_x",
+              "gain": 1.0,
+              "indices": []
+            }
+          ]
+        },
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "position_y",
+            "unit": "m",
+            "description": "Position along the y-axis."
+          },
+          "source_ports": [
+            {
+              "component_name": "quadcopter_nonlinear",
+              "port_name": "position_y",
+              "gain": 1.0,
+              "indices": []
+            }
+          ]
+        },
+        {
+          "port": {
+            "dimension": [
+              1
+            ],
+            "name": "position_z",
+            "unit": "m",
+            "description": "Position along the z-axis."
+          },
+          "source_ports": [
+            {
+              "component_name": "quadcopter_nonlinear",
+              "port_name": "position_z",
+              "gain": 1.0,
+              "indices": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
 }
